@@ -66,6 +66,23 @@ fn do_thing(file: &mut std::fs::File)
 }
 ```
 
+### Modifying permissions
+With default feature `chmod` enabled, also define extension traits for modifying permissions on types that implement `AsRawFd` (like `std::fs::File`), and `AsRef<Path>`.
+
+``` rust
+use readable_perms::{FChmodExt,ChmodExt};
+
+fn mod_path<P: AsRef<Path>>(path: P)
+{
+	path.chmod(Permissions::from_mask(0o644)).expect("Uh oh")
+}
+
+fn mod_file(file: &mut std::fs::File)
+{
+	file.chmod(Permissinos::from_mask(0u777)).expect("Uh oh")
+}
+```
+
 ## Performance
 On nightly, most functions are `const fn` incuring no runtime cost for constant definitions. On stable, not so. Either way, we define a global `const` lookup table, so that conversions are as fast as a memory lookup.
 
