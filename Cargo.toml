@@ -1,7 +1,7 @@
 [package]
 name = "readable-perms"
 description = "More usable UNIX file permissions interface"
-keywords = ["unix", "fs", "permissions", "file", "filesystem", "file permissions", "linux", "mode_t", "chmod"]
+keywords = ["unix", "fs", "permissions", "file", "chmod"]
 version = "0.1.1"
 authors = ["Avril <flanchan@cumallover.me>"]
 edition = "2018"
