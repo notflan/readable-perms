@@ -2,7 +2,7 @@
 name = "readable-perms"
 description = "More usable UNIX file permissions interface"
 keywords = ["unix", "fs", "permissions", "file", "chmod"]
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Avril <flanchan@cumallover.me>"]
 edition = "2018"
 license = "GPL-3.0-or-later"

@@ -50,7 +50,8 @@ mod chmod
 	fn chmod(&mut self, mode: impl Into<u32>) -> io::Result<()>;
     }
 
-    impl FChmodExt for std::fs::File
+    impl<T> FChmodExt for T
+	where T: std::os::unix::io::AsRawFd
     {
 	
 	/// Perform `chmod` on this file to `mode`.
@@ -60,7 +61,7 @@ mod chmod
 	/// If you pass raw `mode_t` that is outside the range (0..=0o777), any extra bits are ignored.
 	fn chmod(&mut self, mode: impl Into<u32>) -> io::Result<()>
 	{
-	    use std::os::unix::io::*;
+	    //use std::os::unix::io::*;
 	    unsafe {
 		if fchmod(self.as_raw_fd(), mode.into() & 0o777) == 0 {
 		    Ok(())
