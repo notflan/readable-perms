@@ -179,15 +179,15 @@ bitflags!{
     }
 }
 
-bitflags!{
-    // not supported, don't care
-    struct StickyBit: u32{
-	const Empty = 0;
-	const Setuid = 0o40000;
-	const Setgid = 0o20000;
-	const SaveSwap = 0o10000;
+/*bitflags!{
+// not supported, don't care
+struct StickyBit: u32{
+const Empty = 0;
+const Setuid = 0o40000;
+const Setgid = 0o20000;
+const SaveSwap = 0o10000;
     }
-}
+}*/
 
 /// Permissions struct in readable format
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy, Ord, PartialOrd)]
@@ -212,7 +212,7 @@ pub struct Permissions
     /// Read, write, and execute mask for anyone else
     pub other: Bit,
     
-    _sticky: StickyBit, //idc about this either
+    u_mask: u32, 
 }
 
 /// The class of user that UNIX permissions care about
@@ -287,7 +287,8 @@ impl Permissions
 	    owner: Bit::None,
 	    group: Bit::None,
 	    other: Bit::None,
-	    _sticky: StickyBit::Empty,
+
+	    u_mask: 0u32,
 	}
     }
 }
@@ -309,15 +310,27 @@ impl Permissions
     }
 
     /// Convert into `mode_t` representation.
-    #[inline] #[cfg(nightly)]  pub const fn mask(&self) -> u32
+    #[inline] #[cfg(nightly)]  const fn mask_calc(&self) -> u32
     {
 	self.c_owner().mode() |
 	self.c_group().mode() |
 	self.c_other().mode()
     }
+
+    #[inline] #[cfg(nightly)] const fn into_calced(mut self) -> Self
+    {
+	self.u_mask = self.mask_calc();
+	self
+    }
     
     /// Convert into `mode_t` representation.
-    #[inline] #[cfg(not(nightly))] pub fn mask(&self) -> u32
+    #[inline] pub const fn mask(&self) -> u32
+    {
+	self.u_mask
+    }
+    
+    /// Convert into `mode_t` representation.
+    #[inline] #[cfg(not(nightly))] fn mask_calc(&self) -> u32
     {
 	self.c_owner().mode() |
 	self.c_group().mode() |
@@ -332,8 +345,8 @@ impl Permissions
 	    group: Class::Group(Bit::Mask).mask_mode(bit),
 	    other: Class::Other(Bit::Mask).mask_mode(bit),
 
-	    _sticky: StickyBit::Empty,
-	}
+	    u_mask: 0,
+	}.into_calced()
     }
     
     /// Convert from `mode_t` representation.
@@ -346,27 +359,30 @@ impl Permissions
     ///
     /// # Usage
     /// For builder pattern
-    #[inline] #[cfg(nightly)]  pub const fn add_mask(self, class: User, bit: Bit) -> Self
+    #[inline] #[cfg(nightly)] pub const fn add_mask(self, class: User, bit: Bit) -> Self
     {
-	match class {
-	    User::Owner => {
-		Self {
-		    owner: Bit::from_bits_truncate(self.owner.bits() | bit.bits()),
-		    ..self
-		}
-	    },
-	    User::Group => {
-		Self {
-		    group: Bit::from_bits_truncate(self.group.bits() | bit.bits()),
-		    ..self
-		}
-	    },
-	    User::Other => {
-		Self {
-		    other: Bit::from_bits_truncate(self.other.bits() | bit.bits()),
-		    ..self
-		}
-	    },
+	Self {
+	    u_mask: self.u_mask | class.mode(bit),
+	    ..match class {
+		User::Owner => {
+		    Self {
+			owner: Bit::from_bits_truncate(self.owner.bits() | bit.bits()),
+			..self
+		    }
+		},
+		User::Group => {
+		    Self {
+			group: Bit::from_bits_truncate(self.group.bits() | bit.bits()),
+			..self
+		    }
+		},
+		User::Other => {
+		    Self {
+			other: Bit::from_bits_truncate(self.other.bits() | bit.bits()),
+			..self
+		    }
+		},
+	    }
 	}
     }
     
@@ -376,25 +392,30 @@ impl Permissions
     /// For builder pattern
     #[inline] #[cfg(not(nightly))] pub fn add_mask(self, class: User, bit: Bit) -> Self
     {
-	match class {
-	    User::Owner => {
-		Self {
-		    owner: Bit::from_bits_truncate(self.owner.bits() | bit.bits()),
-		    ..self
-		}
-	    },
-	    User::Group => {
-		Self {
-		    group: Bit::from_bits_truncate(self.group.bits() | bit.bits()),
-		    ..self
-		}
-	    },
-	    User::Other => {
-		Self {
-		    other: Bit::from_bits_truncate(self.other.bits() | bit.bits()),
-		    ..self
-		}
-	    },
+	Self {
+	    u_mask: self.u_mask | class.mode(bit),
+	    ..match class {
+		User::Owner => {
+		    Self {
+			owner: Bit::from_bits_truncate(self.owner.bits() | bit.bits()),
+			..self
+		    }
+		},
+		User::Group => {
+		    Self {
+			group: Bit::from_bits_truncate(self.group.bits() | bit.bits()),
+
+			..self
+		    }
+		},
+		User::Other => {
+		    Self {
+			other: Bit::from_bits_truncate(self.other.bits() | bit.bits()),
+
+			..self
+		    }
+		},
+	    }
 	}
     }
 
@@ -405,25 +426,28 @@ impl Permissions
     /// For builder pattern
     #[inline] #[cfg(nightly)] pub const fn remove_mask(self, class: User, bit: Bit) -> Self
     {
-	match class {
-	    User::Owner => {
-		Self {
-		    owner: Bit::from_bits_truncate(self.owner.bits() & !bit.bits()),
-		    ..self
-		}
-	    },
-	    User::Group => {
-		Self {
-		    group: Bit::from_bits_truncate(self.group.bits() & !bit.bits()),
-		    ..self
-		}
-	    },
-	    User::Other => {
-		Self {
-		    other: Bit::from_bits_truncate(self.other.bits() & !bit.bits()),
-		    ..self
-		}
-	    },
+	Self{
+	    u_mask: self.u_mask & !class.mode(bit),
+	    ..match class {
+		User::Owner => {
+		    Self {
+			owner: Bit::from_bits_truncate(self.owner.bits() & !bit.bits()),
+			..self
+		    }
+		},
+		User::Group => {
+		    Self {
+			group: Bit::from_bits_truncate(self.group.bits() & !bit.bits()),
+			..self
+		    }
+		},
+		User::Other => {
+		    Self {
+			other: Bit::from_bits_truncate(self.other.bits() & !bit.bits()),
+			..self
+		    }
+		},
+	    }
 	}
     }
 
@@ -434,25 +458,28 @@ impl Permissions
     /// For builder pattern
     #[inline] #[cfg(not(nightly))] pub fn remove_mask(self, class: User, bit: Bit) -> Self
     {
-	match class {
-	    User::Owner => {
-		Self {
-		    owner: Bit::from_bits_truncate(self.owner.bits() & !bit.bits()),
-		    ..self
-		}
-	    },
-	    User::Group => {
-		Self {
-		    group: Bit::from_bits_truncate(self.group.bits() & !bit.bits()),
-		    ..self
-		}
-	    },
-	    User::Other => {
-		Self {
-		    other: Bit::from_bits_truncate(self.other.bits() & !bit.bits()),
-		    ..self
-		}
-	    },
+	Self {
+	    u_mask: self.u_mask & !class.mode(bit),
+	    ..match class {
+		User::Owner => {
+		    Self {
+			owner: Bit::from_bits_truncate(self.owner.bits() & !bit.bits()),
+			..self
+		    }
+		},
+		User::Group => {
+		    Self {
+			group: Bit::from_bits_truncate(self.group.bits() & !bit.bits()),
+			..self
+		    }
+		},
+		User::Other => {
+		    Self {
+			other: Bit::from_bits_truncate(self.other.bits() & !bit.bits()),
+			..self
+		    }
+		},
+	    }
 	}
     }
 
@@ -493,7 +520,8 @@ impl From<Permissions> for u32
 {
     #[inline] fn from(from: Permissions) -> Self
     {
-	from.mask() //can we not do the `MAP` here ;~;
+	debug_assert_eq!(from.mask_calc(), from.mask());
+	from.mask()
     }
 }
 
@@ -565,7 +593,7 @@ mod output {
 	    print_bit(to,&perm.group)?;
 	    write!(to, ", other: ")?;
 	    print_bit(to,&perm.other)?;
-	    write!(to, ", _sticky: StickyBit::Empty}}, ")?;
+	    write!(to, ", u_mask: {}}}, ", perm.mask_calc())?;
 	}
 	writeln!(to, "]")?;
 	Ok(())
@@ -659,6 +687,6 @@ impl std::fmt::Display for Permissions
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
     {
-	println!("0{}", self.mask())
+	write!(f, "0{}", self.mask())
     }
 }

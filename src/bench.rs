@@ -29,4 +29,3 @@ fn from_mask(b: &mut Bencher)
 	}
     });
 }
-
