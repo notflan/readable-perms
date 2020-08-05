@@ -48,7 +48,7 @@ let perms = Permissions::from_mask(0o644);
 assert_eq!(perms, 0o644);
 ```
 
-## Extension trait
+## Extension traits
 
 We also define an extension trait on target family `unix` that follows `std::os::unix::fs::PermissionsExt`.
 See [ext.rs] for details.
