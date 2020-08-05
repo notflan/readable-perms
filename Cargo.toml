@@ -1,15 +1,23 @@
 [package]
 name = "readable-perms"
 description = "More usable UNIX file permissions interface"
-tags = ["unix", "fs", "permissions", "file", "filesystem", "file permissions", "linux", "mode_t", "chmod"]
-version = "0.1.0"
+keywords = ["unix", "fs", "permissions", "file", "filesystem", "file permissions", "linux", "mode_t", "chmod"]
+version = "0.1.1"
 authors = ["Avril <flanchan@cumallover.me>"]
 edition = "2018"
 license = "GPL-3.0-or-later"
+readme = "README.md"
+repository = "https://git.flanchan.moe/flanchan/readable-perms"
+homepage = "https://git.flanchan.moe/flanchan/readable-perms"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
+default = ["chmod"]
+
+# Enable setting Permissions to `std::fs::File` and `impl AsRef<Path>` directly
+chmod = ["libc"]
+
 # Ignore this, it is for regenerating the lookup table used on stable (needed due to lack of matching in `const fn`).
 # It is already included in this repo.
 # If you really want to rebuild it, `cargo test` will output it to `src/stable/mod.rs` lol.
@@ -17,6 +25,7 @@ speedup_hack_stable = []
 
 [dependencies]
 bitflags = "1.2"
+libc = {version = "0.2", optional=true}
 
 [build-dependencies]
 rustc_version = "0.2"

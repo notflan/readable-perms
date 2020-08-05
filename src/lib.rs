@@ -545,7 +545,13 @@ const fn generate_struct() -> [Permissions; 512]
 	{
 	    output[i as usize] = Permissions::from_mask_calc(i);
 	    i+=1;
-	    if i == 0o777 {break;}
+	    if i == 0o777 { //ye idk
+		output[0o777] = Permissions::new()
+		    .add_mask(User::Owner, Bit::Mask)
+		    .add_mask(User::Group, Bit::Mask)
+		    .add_mask(User::Other, Bit::Mask);
+		break;
+	    }
 	}
 	output
     };
@@ -679,7 +685,7 @@ impl PartialEq<Permissions> for u32
 {
     fn eq(&self, other: &Permissions) -> bool
     {
-	&Self::from(*self) == other
+	other.eq(self)
     }
 }
 

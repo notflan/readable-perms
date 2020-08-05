@@ -37,12 +37,27 @@ fn map()
 fn real_file()
 {
     use std::fs::OpenOptions;
-    
-    let file = OpenOptions::new()
-	.read(true)
-	.open("Cargo.toml").expect("File not found");
+    {
+	let mut file = OpenOptions::new()
+	    .read(true)
+	    .write(true)
+	    .open("Cargo.toml").expect("File not found");
+	#[cfg(feature="chmod")] file.chmod(Permissions::from_mask(0o777)).unwrap();
 
-    let perms = file.metadata().expect("Couldn't stat").permissions().unix();
+	let perms = file.metadata().expect("Couldn't stat").permissions().unix();
+	assert_eq!(perms, 0o777);
+    }
+    let p = std::path::Path::new("Cargo.toml");
+    p.chmod(0o644u32).unwrap();
+}
 
-    assert_eq!(perms, 0o644u32);
+#[test]
+fn sevens()
+{
+    assert_eq!(0o777u32, Permissions::from_mask(0o777));
+    assert_eq!(0o777, Permissions::from_mask(0o777).mask());
+    assert_eq!(0o777, Permissions::new().add_mask(User::Owner, Bit::Mask)
+	       .add_mask(User::Group, Bit::Mask)
+	       .add_mask(User::Other, Bit::Mask)
+	       .mask());
 }
